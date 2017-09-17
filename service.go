@@ -13,6 +13,8 @@ import (
 	//go-micro
 	"github.com/micro/go-micro"
 	"github.com/micro/cli"
+	"github.com/micro/go-api"
+
 
 	//MongoDB
 	"gopkg.in/mgo.v2"
@@ -20,7 +22,6 @@ import (
 
 	//TODO: Удалить после альфа-версии
 	"io/ioutil"
-
 )
 
 var session *mgo.Session
@@ -182,7 +183,37 @@ func main() {
 		}),
 	)
 
-	proto.RegisterUrlShortenerHandler(service.Server(), new(UrlShortener))
+	proto.RegisterUrlShortenerHandler(service.Server(), new(UrlShortener),
+		api.WithEndpoint(&api.Endpoint{
+			// The RPC method
+			Name: "UrlShortener.GenerateShortUrl",
+			// The HTTP paths. This can be a POSIX regex
+			Path: []string{"/generateshort"},
+			// The HTTP Methods for this endpoint
+			Method: []string{"POST"},
+			// The API handler to use
+			Handler: api.Rpc,
+
+		}), api.WithEndpoint(&api.Endpoint{
+			// The RPC method
+			Name: "UrlShortener.AcquireShortUrl",
+			// The HTTP paths. This can be a POSIX regex
+			Path: []string{"/acquireshort"},
+			// The HTTP Methods for this endpoint
+			Method: []string{"GET"},
+			// The API handler to use
+			Handler: api.Rpc,
+
+		}), api.WithEndpoint(&api.Endpoint{
+			// The RPC method
+			Name: "UrlShortener.ReplaceAllUrlsByShortUrl",
+			// The HTTP paths. This can be a POSIX regex
+			Path: []string{"/replaceallurls"},
+			// The HTTP Methods for this endpoint
+			Method: []string{"POST"},
+			// The API handler to use
+			Handler: api.Rpc,
+		}))
 
 	// Запуск сервиса
 	if err := service.Run(); err != nil {
