@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+service UrlShortener {
+    rpc GenerateShortUrl (Url) returns (Response) {};
+    rpc AcquireShortUrl (Url) returns (ShortUrl) {};
+    rpc ReplaceAllUrlsByShortUrl (TextWithUrls) returns (TextWithShortUrls) {};
+}
+
+message Url {
+    string url = 1;
+}
+
+message Response {
+    string operationResponse = 2;
+}
+message ShortUrl {
+    string shortUrl = 3;
+}
+
+message TextWithUrls {
+    string text = 4;
+}
+
+message TextWithShortUrls {
+    string textWithShort = 5;
+}
