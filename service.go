@@ -8,13 +8,11 @@ import (
 	"strings"
 
 	//project
-	proto "gomicroexample/proto"
+	proto "./proto"
 
 	//go-micro
 	"github.com/micro/go-micro"
 	"github.com/micro/cli"
-	"github.com/micro/go-api"
-
 
 	//MongoDB
 	"gopkg.in/mgo.v2"
@@ -24,9 +22,7 @@ import (
 	"io/ioutil"
 )
 
-var session *mgo.Session
-
-type UrlShortener struct {}
+type Shortener struct{}
 
 type Url struct {
 	URL 			string 	`json:"url"`
@@ -35,7 +31,7 @@ type Url struct {
 }
 
 // Генерация короткого URL на основе полного
-func (g *UrlShortener) GenerateShortUrl(ctx context.Context, url *proto.Url, rsp *proto.Response) error {
+func (g *Shortener) AddShort(ctx context.Context, url *proto.UrlRequest, rsp *proto.UrlResponse) error {
 	//TODO: Добавить проверок на валидность данных
 	var u Url
 	u.URL = url.Url
@@ -60,7 +56,7 @@ func (g *UrlShortener) GenerateShortUrl(ctx context.Context, url *proto.Url, rsp
 }
 
 // Получение короткого URL по полному
-func (g *UrlShortener) AcquireShortUrl(ctx context.Context, url *proto.Url, shortUrl *proto.ShortUrl) error {
+func (g *Shortener) GetShort(ctx context.Context, url *proto.UrlRequest, shortUrl *proto.ShortUrlResponse) error {
 	//TODO: Добавить проверок на валидность данных (в БД нет этого URL)
 
 	//TODO: Реюзать MongoDB код
@@ -87,7 +83,7 @@ func (g *UrlShortener) AcquireShortUrl(ctx context.Context, url *proto.Url, shor
 }
 
 // Замена всех URL в произвольном тексте на сокращенные URL
-func (g *UrlShortener) ReplaceAllUrlsByShortUrl(ctx context.Context, text *proto.TextWithUrls, textWithShort *proto.TextWithShortUrls) error {
+func (g *Shortener) ReplaceAll(ctx context.Context, text *proto.TextRequest, textWithShort *proto.TextResponse) error {
 	//TODO: Добавить проверок на валидность данных
 
 	//TODO: Реюзать MongoDB код
@@ -117,24 +113,24 @@ func (g *UrlShortener) ReplaceAllUrlsByShortUrl(ctx context.Context, text *proto
 
 func runClient(service micro.Service) {
 	// Имитация клиента :)
-	urlShortener := proto.NewUrlShortenerClient("url_shortener", service.Client())
+	Shortener := proto.NewShortenerClient("ushortenerclient", service.Client())
 
 	// Добавим 3 URL
-	rsp, err := urlShortener.GenerateShortUrl(context.TODO(), &proto.Url{"https://google.com"})
+	rsp, err := Shortener.AddShort(context.TODO(), &proto.UrlRequest{"https://google.com"})
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	fmt.Println(rsp.String())
 
-	rsp, err = urlShortener.GenerateShortUrl(context.TODO(), &proto.Url{"https://yandex.ru"})
+	rsp, err = Shortener.AddShort(context.TODO(), &proto.UrlRequest{"https://yandex.ru"})
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	fmt.Println(rsp.String())
 
-	rsp, err = urlShortener.GenerateShortUrl(context.TODO(), &proto.Url{"https://vk.com"})
+	rsp, err = Shortener.AddShort(context.TODO(), &proto.UrlRequest{"https://vk.com"})
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -142,7 +138,7 @@ func runClient(service micro.Service) {
 	fmt.Println(rsp.String())
 
 	// Запросим короткий URL у URL'a https://google.com
-	rsp2, err2 := urlShortener.AcquireShortUrl(context.TODO(), &proto.Url{"https://google.com"})
+	rsp2, err2 := Shortener.GetShort(context.TODO(), &proto.UrlRequest{"https://google.com"})
 	if err2 != nil {
 		fmt.Println(err)
 		return
@@ -153,7 +149,7 @@ func runClient(service micro.Service) {
 	// Заменим все URL из файла на короткие
 	dat, err := ioutil.ReadFile("textWithURLs")
 	fmt.Println(string(dat))
-	rsp3, err3 := urlShortener.ReplaceAllUrlsByShortUrl(context.TODO(), &proto.TextWithUrls{string(dat)})
+	rsp3, err3 := Shortener.ReplaceAll(context.TODO(), &proto.TextRequest{string(dat)})
 	if err3 != nil {
 		fmt.Println(err)
 		return
@@ -164,7 +160,7 @@ func runClient(service micro.Service) {
 func main() {
 	// Настройка сервиса
 	service := micro.NewService(
-		micro.Name("url_shortener"),
+		micro.Name("go.micro.shortener"),
 		micro.Version("alpha_v2"),
 		micro.Flags(
 			cli.BoolFlag{
@@ -183,37 +179,7 @@ func main() {
 		}),
 	)
 
-	proto.RegisterUrlShortenerHandler(service.Server(), new(UrlShortener),
-		api.WithEndpoint(&api.Endpoint{
-			// The RPC method
-			Name: "UrlShortener.GenerateShortUrl",
-			// The HTTP paths. This can be a POSIX regex
-			Path: []string{"/generateshort"},
-			// The HTTP Methods for this endpoint
-			Method: []string{"POST"},
-			// The API handler to use
-			Handler: api.Rpc,
-
-		}), api.WithEndpoint(&api.Endpoint{
-			// The RPC method
-			Name: "UrlShortener.AcquireShortUrl",
-			// The HTTP paths. This can be a POSIX regex
-			Path: []string{"/acquireshort"},
-			// The HTTP Methods for this endpoint
-			Method: []string{"GET"},
-			// The API handler to use
-			Handler: api.Rpc,
-
-		}), api.WithEndpoint(&api.Endpoint{
-			// The RPC method
-			Name: "UrlShortener.ReplaceAllUrlsByShortUrl",
-			// The HTTP paths. This can be a POSIX regex
-			Path: []string{"/replaceallurls"},
-			// The HTTP Methods for this endpoint
-			Method: []string{"POST"},
-			// The API handler to use
-			Handler: api.Rpc,
-		}))
+	proto.RegisterShortenerHandler(service.Server(), new(Shortener))
 
 	// Запуск сервиса
 	if err := service.Run(); err != nil {
@@ -246,3 +212,35 @@ func hash(s string) uint32 {
 	h.Write([]byte(s))
 	return h.Sum32()
 }
+
+
+//api.WithEndpoint(&api.Endpoint{
+//// The RPC method
+//Name: "UrlShortener.GenerateShortUrl",
+//// The HTTP paths. This can be a POSIX regex
+//Path: []string{"/generateshort"},
+//// The HTTP Methods for this endpoint
+//Method: []string{"POST"},
+//// The API handler to use
+//Handler: api.Rpc,
+//
+//}), api.WithEndpoint(&api.Endpoint{
+//// The RPC method
+//Name: "UrlShortener.AcquireShortUrl",
+//// The HTTP paths. This can be a POSIX regex
+//Path: []string{"/acquireshort"},
+//// The HTTP Methods for this endpoint
+//Method: []string{"GET"},
+//// The API handler to use
+//Handler: api.Rpc,
+//
+//}), api.WithEndpoint(&api.Endpoint{
+//// The RPC method
+//Name: "UrlShortener.ReplaceAllUrlsByShortUrl",
+//// The HTTP paths. This can be a POSIX regex
+//Path: []string{"/replaceallurls"},
+//// The HTTP Methods for this endpoint
+//Method: []string{"POST"},
+//// The API handler to use
+//Handler: api.Rpc,
+//})

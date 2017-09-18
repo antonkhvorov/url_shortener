@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package go.micro.shortener;
+
+service Shortener {
+    rpc AddShort (UrlRequest) returns (UrlResponse) {};
+    rpc GetShort (UrlRequest) returns (ShortUrlResponse) {};
+    rpc ReplaceAll (TextRequest) returns (TextResponse) {};
+}
+
+message UrlRequest {
+    string url = 1;
+}
+
+message UrlResponse {
+    string operationResponse = 2;
+}
+
+message ShortUrlResponse {
+    string shortUrl = 3;
+}
+
+message TextRequest {
+    string text = 4;
+}
+
+message TextResponse {
+    string textWithShort = 5;
+}
